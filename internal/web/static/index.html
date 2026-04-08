@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XALGORIX — Most Powerful AI Pentesting Agent</title>
+  <meta name="description" content="AI-powered cybersecurity assessment platform">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+  <div class="bg-grid"></div>
+  
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <a href="/" class="logo">
+        <img src="/static/logo.png" alt="Xalgorix" style="height:40px;margin-right:10px;">
+        <div>
+          <div class="logo-text">XAL<span>GORIX</span></div>
+          <div class="logo-tag">Most Powerful Open-Source AI Pentesting</div>
+        </div>
+      </a>
+      
+      <div class="header-stats">
+        <div class="stat-group">
+          <div class="stat">
+            <div class="stat-value" id="stat-iter">0</div>
+            <div class="stat-label">Iterations</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-tools">0</div>
+            <div class="stat-label">Tools</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-vulns">0</div>
+            <div class="stat-label">Vulns</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-tokens">0</div>
+            <div class="stat-label">Tokens</div>
+          </div>
+        </div>
+        
+        <div class="status-badge idle" id="status-badge">
+          <span class="status-dot"></span>
+          <span id="status-text">Idle</span>
+        </div>
+        
+        <div class="live-clock" id="live-clock">--:--:--</div>
+      </div>
+    </header>
+    
+    <div class="container">
+      <!-- Queue Bar -->
+      <div class="queue-bar" id="queue-bar">
+        <div class="queue-info">
+          <span class="queue-progress" id="queue-progress">Scanning 1/3</span>
+          <span class="queue-target" id="queue-target">target1.com</span>
+        </div>
+        <div class="queue-track">
+          <div class="queue-fill" id="queue-fill" style="width: 33%"></div>
+        </div>
+      </div>
+      
+      <!-- Control Panel -->
+      <div class="control-panel">
+        <div class="input-section">
+          <div class="input-row">
+            <select id="scan-mode" class="input-field input-select">
+              <option value="single">🎯 Single Site Scan</option>
+              <option value="dast">🔍 DAST - Scan Specific URLs</option>
+              <option value="wildcard">🌐 Wildcard - Scan All Subdomains</option>
+            </select>
+            <input type="text" id="target-input" class="input-field" placeholder="https://target.com — Target URL, domain, or IP">
+            <label class="file-btn" title="Upload targets file">
+              📂
+              <input type="file" id="targets-file" accept=".txt,.csv,.list" style="display:none" onchange="handleTargetsFile(this)">
+            </label>
+          </div>
+          
+          <div class="input-row severity-row">
+            <span class="severity-label">🎯 Severity Filter:</span>
+            <label class="severity-checkbox critical">
+              <input type="checkbox" id="sev-critical" value="critical" checked>
+              <span>Critical</span>
+            </label>
+            <label class="severity-checkbox high">
+              <input type="checkbox" id="sev-high" value="high" checked>
+              <span>High</span>
+            </label>
+            <label class="severity-checkbox medium">
+              <input type="checkbox" id="sev-medium" value="medium" checked>
+              <span>Medium</span>
+            </label>
+            <label class="severity-checkbox low">
+              <input type="checkbox" id="sev-low" value="low">
+              <span>Low</span>
+            </label>
+            <label class="severity-checkbox info">
+              <input type="checkbox" id="sev-info" value="info">
+              <span>Info</span>
+            </label>
+          </div>
+          
+
+          <div class="input-row">
+            <textarea id="instruction-input" class="input-field input-textarea" placeholder="Custom instructions (optional) — or upload a file"></textarea>
+            <label class="file-btn" title="Upload instructions file">
+              📄
+              <input type="file" id="instructions-file" accept=".txt,.md,.text" style="display:none" onchange="handleInstructionsFile(this)">
+            </label>
+          </div>
+          
+          <details class="settings-toggle" id="llm-settings">
+            <summary>🤖 LLM Provider Settings</summary>
+            <div class="settings-panel" id="llm-settings-panel">
+              <select id="llm-provider" class="input-field" onchange="onProviderChange()">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic (Claude)</option>
+                <option value="google">Google Gemini</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="groq">Groq</option>
+                <option value="minimax">MiniMax</option>
+                <option value="ollama">Ollama (Local)</option>
+                <option value="custom">Custom Provider</option>
+              </select>
+              <input type="text" id="llm-model" class="input-field" placeholder="Model (e.g. gpt-5.4, claude-sonnet-4.6)">
+              <input type="password" id="llm-apikey" class="input-field" placeholder="API Key">
+              <input type="text" id="llm-apibase" class="input-field" placeholder="API Base URL">
+            </div>
+          </details>
+          
+          <details class="settings-toggle" id="notif-settings">
+            <summary>🔔 Discord Notifications</summary>
+            <div class="settings-panel" id="notif-settings-panel">
+              <input type="text" id="discord-webhook" class="input-field" style="width: 100%;" placeholder="Discord Webhook URL">
+            </div>
+          </details>
+          
+          <details class="settings-toggle" id="rate-settings">
+            <summary>⚡ Rate Limiting</summary>
+            <div class="settings-panel" style="grid-template-columns: 1fr 1fr 120px;">
+              <input type="number" id="rate-limit-requests" class="input-field" placeholder="Requests (1-1000)" min="1" max="1000">
+              <input type="number" id="rate-limit-window" class="input-field" placeholder="Window (10-3600s)" min="10" max="3600">
+              <button class="btn btn-secondary" onclick="saveRateLimit()">💾 Save</button>
+              <div id="rate-limit-status" style="grid-column: 1 / -1; font-size: 11px; color: var(--success); text-align: center; margin-top: 4px;"></div>
+            </div>
+          </details>
+
+          <details class="settings-toggle" id="agentmail-settings">
+            <summary>📧 AgentMail (Email Verification)</summary>
+            <div id="agentmail-panel">
+              <input type="text" id="agentmail-pod" class="input-field" placeholder="AgentMail Pod (e.g. am_us_pod_47)">
+              <input type="password" id="agentmail-apikey" class="input-field" placeholder="AgentMail API Key">
+              <button class="btn btn-secondary" onclick="saveAgentMail()">💾 Save</button>
+              <div id="agentmail-status"></div>
+            </div>
+          </details>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" id="start-btn" onclick="startScan()">
+            <span>▶</span> Start Scan
+          </button>
+          <button class="btn btn-danger hidden" id="stop-btn" onclick="stopScan()">
+            <span>■</span> Stop
+          </button>
+          <button class="btn btn-secondary" onclick="clearFeed()">
+            🗑️ Clear
+          </button>
+        </div>
+      </div>
+      
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Feed Section -->
+        <div class="feed-section">
+          <div class="feed-card" id="feed-card">
+            <div class="feed-header">
+              <span class="feed-title">Live Feed</span>
+              <div class="feed-actions">
+                <button class="feed-btn" onclick="downloadEvents()">Export</button>
+                <button class="feed-btn" onclick="scrollToBottom()">Latest</button>
+              </div>
+            </div>
+            <div class="feed-body" id="feed-body">
+              <div class="empty-state" id="empty-state">
+                <div class="empty-icon">🎯</div>
+                <div class="empty-title">Ready to Scan</div>
+                <div class="empty-desc">Enter a target and start your pentest</div>
+              </div>
+            </div>
+            <!-- Chat Input -->
+            <div id="chat-input-container" style="padding: 12px; background: #0a0a0b; border-top: 1px solid #1a1a1c; position: sticky; bottom: 0;">
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="chat-input" placeholder="Send a message to Xalgorix during scan..." 
+                  style="flex:1; padding: 12px; background: #141416; border: 1px solid #2a2a2e; border-radius: 8px; color: #f0f0f2; font-size: 14px;"
+                  onkeypress="if(event.key==='Enter')sendChatMessage()">
+                <button onclick="sendChatMessage()" style="padding: 12px 20px; background: #00ff88; border: none; border-radius: 8px; color: #0a0a0b; cursor: pointer; font-weight: 700; font-size: 14px;">Send</button>
+              </div>
+              <div style="font-size: 11px; color: #888; margin-top: 6px;">Chat is active during scans</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="sidebar">
+          <!-- Vulnerabilities Card -->
+          <div class="sidebar-card">
+            <div class="sidebar-header">
+              <span>🐛 Vulnerabilities</span>
+              <span class="sidebar-count" id="vuln-count">0</span>
+            </div>
+            <div class="sidebar-body">
+              <ul class="vuln-list" id="vuln-list">
+                <li class="empty-state" style="padding: 20px 0">
+                  <div class="empty-title" style="font-size: 13px">No vulnerabilities found</div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- Tools Card -->
+          <div class="sidebar-card">
+            <div class="sidebar-header">
+              <span>🔧 Tools Used</span>
+              <span class="sidebar-count" id="tools-count">0</span>
+            </div>
+            <div class="sidebar-body">
+              <ul class="vuln-list" id="tools-list" style="max-height: 180px">
+                <li class="empty-state" style="padding: 20px 0">
+                  <div class="empty-title" style="font-size: 13px">No tools used yet</div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- Quick Actions Card -->
+          <div class="sidebar-card">
+            <div class="sidebar-header">
+              <span>⚡ Quick Actions</span>
+            </div>
+            <div class="sidebar-body" style="display: flex; flex-direction: column; gap: 8px">
+              <button class="btn btn-secondary" onclick="loadLastScan()" style="justify-content: flex-start; font-size: 12px; padding: 10px 14px">
+                📂 Load Last Scan
+              </button>
+              <button class="btn btn-secondary" onclick="showHelp()" style="justify-content: flex-start; font-size: 12px; padding: 10px 14px">
+                ❓ Help & Commands
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <footer class="footer">
+        <a href="https://github.com/xalgord/xalgorix" target="_blank">Xalgorix</a> 
+        <span class="separator">•</span> 
+        <span id="version-display">v0.0.0</span>
+        <span class="separator">•</span> 
+        The Most Powerful Open-Source AI Pentesting Agent
+      </footer>
+    </div>
+  </div>
+  
+  <!-- Vulnerability Modal -->
+  <div class="modal-overlay" id="vuln-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">
+          <span class="vuln-severity-dot" id="modal-severity-dot"></span>
+          <span id="modal-vuln-title">SQL Injection</span>
+        </div>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Dynamic content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div class="modal-overlay" id="help-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>❓</span>
+          <span>Help & Commands</span>
+        </div>
+        <button class="modal-close" onclick="closeHelpModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <div class="modal-label">Getting Started</div>
+          <div class="modal-value">
+            • Enter a target URL, domain, or IP address<br>
+            • Add custom instructions for specific testing focus<br>
+            • Upload a targets file (one per line) for batch scanning
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">LLM Provider</div>
+          <div class="modal-value">
+            Switch between MiniMax, OpenAI, DeepSeek, Anthropic, Google, Groq, or Ollama in the settings panel.
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">Notifications</div>
+          <div class="modal-value">
+            Add a Discord webhook to receive real-time alerts for scan start, vulnerabilities found, and completion.
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">Keyboard Shortcuts</div>
+          <div class="modal-value">
+            <code style="background:var(--bg-tertiary);padding:4px 8px;border-radius:4px;font-size:12px">Enter</code> — Start scan<br>
+            <code style="background:var(--bg-tertiary);padding:4px 8px;border-radius:4px;font-size:12px">Esc</code> — Close modal
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
