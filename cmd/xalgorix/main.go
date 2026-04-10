@@ -185,14 +185,24 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := exec.Command("cp", tmpPath, installPath).Run(); err != nil {
-			// Try with sudo + mv (mv works even if binary is running on Linux)
-			sudoCmd := exec.Command("sudo", "sh", "-c", "mv "+tmpPath+" "+installPath)
-			sudoCmd.Stdin = os.Stdin
-			sudoCmd.Stdout = os.Stdout
-			sudoCmd.Stderr = os.Stderr
-			if err := sudoCmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "❌ Failed to install (need sudo): %v\n", err)
+		// On Linux, cp/mv fail with "text file busy" if the target is running.
+		// We use sudo to kill the old process before replacing it.
+	 installCmd := exec.Command("sudo", "install", "-Dm755", tmpPath, installPath)
+		installCmd.Stdin = os.Stdin
+		installCmd.Stdout = os.Stdout
+		installCmd.Stderr = os.Stderr
+		if err := installCmd.Run(); err != nil {
+			// Fallback: kill running xalgorix processes, then install
+			killCmd := exec.Command("sudo", "killall", "-9", "xalgorix")
+			killCmd.Run()
+			time.Sleep(500 * time.Millisecond)
+			installCmd2 := exec.Command("sudo", "install", "-Dm755", tmpPath, installPath)
+			installCmd2.Stdin = os.Stdin
+			installCmd2.Stdout = os.Stdout
+			installCmd2.Stderr = os.Stderr
+			if err := installCmd2.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "❌ Failed to install: %v\n", err)
+				os.Remove(tmpPath)
 				os.Exit(1)
 			}
 		}
