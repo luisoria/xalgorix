@@ -13,4 +13,4 @@ ENV XALGORIX_PORT=9137
 ENV XALGORIX_USERNAME=admin
 ENV XALGORIX_PASSWORD=admin
 ENTRYPOINT ["xalgorix"]
-CMD ["--web", "--port", "9137"]
+CMD ["--web", "--bind", "0.0.0.0", "--port", "9137"]
