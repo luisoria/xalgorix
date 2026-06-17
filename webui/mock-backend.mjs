@@ -247,6 +247,10 @@ const server = http.createServer(async (req, res) => {
     inst.started_at = nowIso();
     return ok(res, { status: "started" });
   }
+  const instEvents = url.match(/^\/api\/instances\/([^/]+)\/events$/);
+  if (instEvents && method === "GET") {
+    return send(res, []);
+  }
 
   // -------- Scans (records) -------------------------------------------------
   if (method === "GET" && url === "/api/scans") {
