@@ -207,7 +207,8 @@ type anthropicResponse struct {
 // Also supports custom providers - just set XALGORIX_API_BASE to your endpoint.
 func (c *Client) resolveEndpoint() (string, string) {
 	apiBase := c.cfg.APIBase
-	model := c.apiModel
+	apiModel := c.apiModel
+	model := apiModel
 
 	// Extract provider prefix if present (e.g., "openai/gpt-5.4" -> provider="openai", model="gpt-5.4")
 	provider := ""
@@ -219,12 +220,13 @@ func (c *Client) resolveEndpoint() (string, string) {
 	// Provider prefix in model name is the source of truth for API base.
 	// However, if a non-empty API base was explicitly set (e.g., from web UI), use it.
 	providerBases := map[string]string{
-		"openai":    "https://api.openai.com/v1",
-		"anthropic": "https://api.anthropic.com",
-		"minimax":   "https://api.minimax.io/v1",
-		"deepseek":  "https://api.deepseek.com/v1",
-		"groq":      "https://api.groq.com/openai/v1",
-		"ollama":    "http://localhost:11434/v1",
+		"openai":     "https://api.openai.com/v1",
+		"anthropic":  "https://api.anthropic.com",
+		"minimax":    "https://api.minimax.io/v1",
+		"deepseek":   "https://api.deepseek.com/v1",
+		"groq":       "https://api.groq.com/openai/v1",
+		"ollama":     "http://localhost:11434/v1",
+		"openrouter": "https://openrouter.ai/api/v1",
 		// Google's chat endpoint is /v1beta/models/MODEL:generateContent — we
 		// store the bare host here and append the version segment below.
 		"google": "https://generativelanguage.googleapis.com",
@@ -242,6 +244,11 @@ func (c *Client) resolveEndpoint() (string, string) {
 	}
 
 	apiBase = strings.TrimRight(apiBase, "/")
+	if isOpenRouterAPIBase(apiBase) {
+		// OpenRouter model IDs include the provider namespace, e.g.
+		// "nvidia/nemotron-...:free". Keep the full ID instead of stripping it.
+		model = apiModel
+	}
 
 	// Build the URL based on provider
 	url := apiBase
@@ -280,6 +287,10 @@ func isGeminiAPIBase(value string) bool {
 	value = strings.ToLower(value)
 	return strings.Contains(value, "generativelanguage.googleapis.com") ||
 		strings.Contains(value, "generativelanguage")
+}
+
+func isOpenRouterAPIBase(value string) bool {
+	return strings.Contains(strings.ToLower(value), "openrouter.ai")
 }
 
 func (c *Client) usesGeminiAPI(endpoint string) bool {

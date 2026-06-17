@@ -202,6 +202,12 @@ func TestResolveEndpoint_ProviderDefaultsAndCustomBases(t *testing.T) {
 			wantURL:   "https://llm.example/v1/chat/completions",
 			wantModel: "my-model",
 		},
+		{
+			name:      "openrouter keeps provider-qualified model id",
+			cfg:       config.Config{LLM: "nvidia/nemotron-3-ultra-550b-a55b:free", APIBase: "https://openrouter.ai/api/v1", APIKey: "k"},
+			wantURL:   "https://openrouter.ai/api/v1/chat/completions",
+			wantModel: "nvidia/nemotron-3-ultra-550b-a55b:free",
+		},
 	}
 
 	for _, tc := range cases {
