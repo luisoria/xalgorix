@@ -83,6 +83,46 @@ func TestParseAllFormats(t *testing.T) {
 	}
 }
 
+func TestParseOpenRouterToolCallVariant(t *testing.T) {
+	input := `<tool_call>terminal_execute>
+<parameter>command</arg_key>
+<arg_value>curl -sI "https://api.planethoster.net/reseller-api/" 2>/dev/null | head -50</arg_value>
+<arg_key>target</arg_key>
+<arg_value>api.planethoster.net/reseller-api/</arg_value>
+</tool_call>`
+
+	calls := ParseToolCalls(input)
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 call, got %+v", calls)
+	}
+	if calls[0].Name != "terminal_execute" {
+		t.Fatalf("name = %q, want terminal_execute", calls[0].Name)
+	}
+	if got := calls[0].Args["command"]; !strings.Contains(got, "curl -sI") {
+		t.Fatalf("command not parsed: %q", got)
+	}
+	if got := calls[0].Args["target"]; got != "api.planethoster.net/reseller-api/" {
+		t.Fatalf("target = %q", got)
+	}
+}
+
+func TestParseBareToolTagVariant(t *testing.T) {
+	input := `<read_skill>
+<parameter=name>ssrf</parameter>
+</function>`
+
+	calls := ParseToolCalls(input)
+	if len(calls) != 1 {
+		t.Fatalf("expected 1 call, got %+v", calls)
+	}
+	if calls[0].Name != "read_skill" {
+		t.Fatalf("name = %q, want read_skill", calls[0].Name)
+	}
+	if got := calls[0].Args["name"]; got != "ssrf" {
+		t.Fatalf("name arg = %q", got)
+	}
+}
+
 // TestFixIncomplete_SingleUnclosed exercises the original (pre-fix) case:
 // one open <function=...> tag with no </function>. The repaired string
 // must parse cleanly.

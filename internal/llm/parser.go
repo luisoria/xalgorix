@@ -29,6 +29,8 @@ var (
 	// Alternate top-level format: <invoke name="X">...</invoke>
 	invokeOpen   = regexp.MustCompile(`<invoke\s+name=["']([^"']+)["']>`)
 	funcCallsTag = regexp.MustCompile(`</?function_calls>`)
+	toolCallOpen = regexp.MustCompile(`<tool_call>\s*([A-Za-z_][A-Za-z0-9_]*)\s*>?`)
+	bareToolOpen = regexp.MustCompile(`(?s)<([A-Za-z_][A-Za-z0-9_]*)>\s*(<parameter|<arg_key|<arg_value)`)
 
 	// Normalize quotes around = in tags: <function = "name"> → <function=name>
 	stripQuotesRe = regexp.MustCompile(`<(function|parameter)\s*=\s*["']?([^>"']+?)["']?\s*>`)
@@ -41,7 +43,9 @@ var (
 	multiBlankRe   = regexp.MustCompile(`\n\s*\n`)
 
 	// Strategy 2 lenient param matching (fallback)
-	lenientParamRe = regexp.MustCompile(`(?s)<parameter[^>]*?(\w+)\s*>(.*?)</parameter>`)
+	lenientParamRe   = regexp.MustCompile(`(?s)<parameter[^>]*?(\w+)\s*>(.*?)</parameter>`)
+	brokenParamArgRe = regexp.MustCompile(`(?s)<parameter>\s*([^<]+?)\s*</arg_key>\s*<arg_value>(.*?)</arg_value>`)
+	argPairRe        = regexp.MustCompile(`(?s)<arg_key>\s*([^<]+?)\s*</arg_key>\s*<arg_value>(.*?)</arg_value>`)
 	// Split identifier on punctuation/whitespace
 	identSplitRe = regexp.MustCompile(`[.\s,;:!?]+`)
 )
@@ -103,7 +107,21 @@ func extractParams(body string) map[string]string {
 	if len(args) > 0 {
 		return args
 	}
-
+	for _, pm := range brokenParamArgRe.FindAllStringSubmatch(body, -1) {
+		pName := sanitizeParamName(pm[1])
+		if pName != "" {
+			args[pName] = html.UnescapeString(strings.TrimSpace(pm[2]))
+		}
+	}
+	for _, pm := range argPairRe.FindAllStringSubmatch(body, -1) {
+		pName := sanitizeParamName(pm[1])
+		if pName != "" {
+			args[pName] = html.UnescapeString(strings.TrimSpace(pm[2]))
+		}
+	}
+	if len(args) > 0 {
+		return args
+	}
 	// Strategy 3: No parameter tags at all — treat raw body as single value.
 	// Use the first word-like chunk after "=" or the trimmed body.
 	trimmed := strings.TrimSpace(body)
@@ -155,7 +173,11 @@ func normalizeFormat(content string) string {
 		content = invokeOpen.ReplaceAllString(content, "<function=$1>")
 		content = strings.ReplaceAll(content, "</invoke>", "</function>")
 	}
-
+	if strings.Contains(content, "<tool_call>") {
+		content = toolCallOpen.ReplaceAllString(content, "<function=$1>")
+		content = strings.ReplaceAll(content, "</tool_call>", "</function>")
+	}
+	content = bareToolOpen.ReplaceAllString(content, "<function=$1>$2")
 	// Normalize quotes/spaces around = signs: <function = "name"> → <function=name>
 	content = stripQuotesRe.ReplaceAllStringFunc(content, func(s string) string {
 		m := stripQuotesRe.FindStringSubmatch(s)
