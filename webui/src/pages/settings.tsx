@@ -130,9 +130,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!environment.data) return;
+    const variables = environment.data.variables ?? [];
     setEnvValues(
       Object.fromEntries(
-        environment.data.variables.map((variable) => [
+        variables.map((variable) => [
           variable.key,
           variable.value ?? "",
         ]),
@@ -849,7 +850,7 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 function envValue(data: EnvironmentSettings | undefined, key: string) {
-  return data?.variables.find((variable) => variable.key === key)?.value ?? "";
+  return data?.variables?.find((variable) => variable.key === key)?.value ?? "";
 }
 
 function groupBy<T, K extends string>(items: T[], getKey: (item: T) => K) {

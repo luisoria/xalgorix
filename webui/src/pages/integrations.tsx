@@ -39,7 +39,7 @@ export default function IntegrationsPage() {
   const environment = useEnvironmentSettings();
   const ai = version.data?.ai;
   const usesVercelGateway = ai?.gateway === "vercel";
-  const discordWebhook = environment.data?.variables.find(
+  const discordWebhook = environment.data?.variables?.find(
     (variable) => variable.key === "XALGORIX_DISCORD_WEBHOOK",
   );
 

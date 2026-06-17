@@ -268,7 +268,7 @@ export interface EnvironmentVariableSetting {
 
 export interface EnvironmentSettings {
   envFile: string;
-  variables: EnvironmentVariableSetting[];
+  variables?: EnvironmentVariableSetting[];
   restartRequired?: boolean;
 }
 
