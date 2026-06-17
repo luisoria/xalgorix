@@ -1007,7 +1007,11 @@ func (a *Agent) Run(targets []string, instruction string) {
 		}
 
 		a.msgMu.Lock()
-		a.messages = append(a.messages, llm.Message{Role: "assistant", Content: response})
+		if assistantMsg, ok := a.client.LastAssistantMessage(); ok {
+			a.messages = append(a.messages, assistantMsg)
+		} else {
+			a.messages = append(a.messages, llm.Message{Role: "assistant", Content: response})
+		}
 		a.msgMu.Unlock()
 
 		toolCalls := llm.ParseToolCalls(responseClean)

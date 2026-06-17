@@ -20,8 +20,9 @@ import (
 
 // Message represents a chat message.
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role             string          `json:"role"`
+	Content          string          `json:"content"`
+	ReasoningDetails json.RawMessage `json:"reasoning_details,omitempty"`
 }
 
 // StreamChunk is a piece of streaming response.
@@ -40,6 +41,7 @@ type Client struct {
 	mu         sync.Mutex
 	totalIn    int
 	totalOut   int
+	lastMsg    Message
 	// ctx is read concurrently by chatWithRetry / ChatStream and written by
 	// SetContext. Use atomic.Value to avoid a race; loadCtx() is the only
 	// reader, storeCtx() is the only writer.
@@ -58,6 +60,21 @@ func (c *Client) GetTokens() (promptTokens, completionTokens, totalTokens int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.totalIn, c.totalOut, c.totalIn + c.totalOut
+}
+
+func (c *Client) LastAssistantMessage() (Message, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.lastMsg.Role == "" {
+		return Message{}, false
+	}
+	return c.lastMsg, true
+}
+
+func (c *Client) storeLastAssistantMessage(msg Message) {
+	c.mu.Lock()
+	c.lastMsg = msg
+	c.mu.Unlock()
 }
 
 // NewClient creates a new LLM client.
@@ -103,12 +120,17 @@ func (c *Client) loadCtx() context.Context {
 
 // chatRequest is the OpenAI-compatible chat completion request.
 type chatRequest struct {
-	Model         string         `json:"model"`
-	Messages      []Message      `json:"messages"`
-	Stream        bool           `json:"stream"`
-	StreamOptions *streamOptions `json:"stream_options,omitempty"`
-	Temperature   float64        `json:"temperature,omitempty"`
-	MaxTokens     int            `json:"max_tokens,omitempty"`
+	Model         string            `json:"model"`
+	Messages      []Message         `json:"messages"`
+	Stream        bool              `json:"stream"`
+	StreamOptions *streamOptions    `json:"stream_options,omitempty"`
+	Reasoning     *reasoningOptions `json:"reasoning,omitempty"`
+	Temperature   float64           `json:"temperature,omitempty"`
+	MaxTokens     int               `json:"max_tokens,omitempty"`
+}
+
+type reasoningOptions struct {
+	Enabled bool `json:"enabled"`
 }
 
 // streamOptions opts into usage stats for OpenAI-compatible streaming
@@ -125,8 +147,9 @@ type chatChoice struct {
 		Reasoning string `json:"reasoning"`
 	} `json:"delta"`
 	Message struct {
-		Content   string `json:"content"`
-		Reasoning string `json:"reasoning"`
+		Content          string          `json:"content"`
+		Reasoning        string          `json:"reasoning"`
+		ReasoningDetails json.RawMessage `json:"reasoning_details"`
 	} `json:"message"`
 }
 
@@ -489,6 +512,9 @@ func (c *Client) ChatStream(messages []Message) <-chan StreamChunk {
 				Stream:        true,
 				StreamOptions: &streamOptions{IncludeUsage: true},
 			}
+			if isOpenRouterAPIBase(endpoint) {
+				reqBody.Reasoning = &reasoningOptions{Enabled: true}
+			}
 			body, _ = json.Marshal(reqBody)
 		}
 
@@ -637,6 +663,7 @@ func (c *Client) ChatStream(messages []Message) <-chan StreamChunk {
 
 // doChat performs a single non-streaming API call.
 func (c *Client) doChat(messages []Message) (string, error) {
+	c.storeLastAssistantMessage(Message{})
 	endpoint, model := c.resolveEndpoint()
 	log.Printf("[llm] Request → URL=%s model=%s apiModel=%s cfgLLM=%s cfgAPIBase=%s", endpoint, model, c.apiModel, c.cfg.LLM, c.cfg.APIBase)
 
@@ -694,6 +721,9 @@ func (c *Client) doChat(messages []Message) (string, error) {
 		}
 	} else {
 		reqBody := chatRequest{Model: model, Messages: messages, Stream: false}
+		if isOpenRouterAPIBase(endpoint) {
+			reqBody.Reasoning = &reasoningOptions{Enabled: true}
+		}
 		body, err = json.Marshal(reqBody)
 		if err != nil {
 			return "", fmt.Errorf("failed to marshal request: %w", err)
@@ -780,5 +810,10 @@ func (c *Client) doChat(messages []Message) (string, error) {
 	if content == "" {
 		content = chatResp.Choices[0].Message.Reasoning
 	}
+	c.storeLastAssistantMessage(Message{
+		Role:             "assistant",
+		Content:          content,
+		ReasoningDetails: chatResp.Choices[0].Message.ReasoningDetails,
+	})
 	return content, nil
 }

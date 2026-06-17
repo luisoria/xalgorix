@@ -351,7 +351,19 @@ func TestDoChat_OpenAICompatibleReasoningFallback(t *testing.T) {
 		LLMMaxRetries: 1,
 	})
 	c.httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return jsonResponse(http.StatusOK, `{"choices":[{"message":{"role":"assistant","content":"","reasoning":"reasoning text"}}],"usage":{"prompt_tokens":2,"completion_tokens":3}}`), nil
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("reading request body: %v", err)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Fatalf("unmarshal body: %v", err)
+		}
+		reasoning, ok := payload["reasoning"].(map[string]any)
+		if !ok || reasoning["enabled"] != true {
+			t.Fatalf("request reasoning = %#v, want enabled true", payload["reasoning"])
+		}
+		return jsonResponse(http.StatusOK, `{"choices":[{"message":{"role":"assistant","content":"","reasoning":"reasoning text","reasoning_details":[{"type":"reasoning.text","text":"trace"}]}}],"usage":{"prompt_tokens":2,"completion_tokens":3}}`), nil
 	})}
 
 	got, err := c.doChat([]Message{{Role: "user", Content: "hello"}})
@@ -360,6 +372,13 @@ func TestDoChat_OpenAICompatibleReasoningFallback(t *testing.T) {
 	}
 	if got != "reasoning text" {
 		t.Fatalf("doChat = %q, want reasoning text", got)
+	}
+	msg, ok := c.LastAssistantMessage()
+	if !ok {
+		t.Fatal("LastAssistantMessage missing")
+	}
+	if msg.Content != "reasoning text" || len(msg.ReasoningDetails) == 0 {
+		t.Fatalf("last assistant message = %+v, reasoning_details=%s", msg, string(msg.ReasoningDetails))
 	}
 }
 
