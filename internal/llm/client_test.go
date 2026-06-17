@@ -343,6 +343,26 @@ func TestDoChat_AnthropicEmptyContentReturnsError(t *testing.T) {
 	}
 }
 
+func TestDoChat_OpenAICompatibleReasoningFallback(t *testing.T) {
+	c := NewClient(&config.Config{
+		LLM:           "poolside/laguna-m.1:free",
+		APIBase:       "https://openrouter.ai/api/v1",
+		APIKey:        "openrouter-key",
+		LLMMaxRetries: 1,
+	})
+	c.httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, `{"choices":[{"message":{"role":"assistant","content":"","reasoning":"reasoning text"}}],"usage":{"prompt_tokens":2,"completion_tokens":3}}`), nil
+	})}
+
+	got, err := c.doChat([]Message{{Role: "user", Content: "hello"}})
+	if err != nil {
+		t.Fatalf("doChat returned error: %v", err)
+	}
+	if got != "reasoning text" {
+		t.Fatalf("doChat = %q, want reasoning text", got)
+	}
+}
+
 func TestDoChat_AnthropicToolUseOnlyReturnsError(t *testing.T) {
 	c := NewClient(&config.Config{
 		LLM:           "anthropic/claude-sonnet-4-20250514",

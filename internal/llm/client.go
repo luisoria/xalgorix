@@ -120,8 +120,14 @@ type streamOptions struct {
 
 // chatChoice represents a response choice.
 type chatChoice struct {
-	Delta   struct{ Content string } `json:"delta"`
-	Message struct{ Content string } `json:"message"`
+	Delta struct {
+		Content   string `json:"content"`
+		Reasoning string `json:"reasoning"`
+	} `json:"delta"`
+	Message struct {
+		Content   string `json:"content"`
+		Reasoning string `json:"reasoning"`
+	} `json:"message"`
 }
 
 // chatResponse is the OpenAI-compatible response.
@@ -613,6 +619,9 @@ func (c *Client) ChatStream(messages []Message) <-chan StreamChunk {
 				}
 				if len(sseResp.Choices) > 0 {
 					content := sseResp.Choices[0].Delta.Content
+					if content == "" {
+						content = sseResp.Choices[0].Delta.Reasoning
+					}
 					if content != "" {
 						ch <- StreamChunk{Content: content}
 					}
@@ -767,5 +776,9 @@ func (c *Client) doChat(messages []Message) (string, error) {
 		c.totalOut += chatResp.Usage.CompletionTokens
 		c.mu.Unlock()
 	}
-	return chatResp.Choices[0].Message.Content, nil
+	content := chatResp.Choices[0].Message.Content
+	if content == "" {
+		content = chatResp.Choices[0].Message.Reasoning
+	}
+	return content, nil
 }
