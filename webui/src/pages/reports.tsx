@@ -18,10 +18,14 @@ export default function ReportsPage() {
     const q = query.toLowerCase();
     return (scans ?? [])
       .filter((s) =>
-        !q ? true : s.target.toLowerCase().includes(q) || s.id.toLowerCase().includes(q),
+        !q
+          ? true
+          : (s.target ?? "").toLowerCase().includes(q) ||
+            (s.id ?? "").toLowerCase().includes(q),
       )
       .sort((a, b) =>
-        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+        new Date(b.started_at ?? 0).getTime() -
+        new Date(a.started_at ?? 0).getTime(),
       );
   }, [scans, query]);
 

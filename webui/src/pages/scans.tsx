@@ -44,14 +44,15 @@ export default function ScansPage() {
       const needle = q.toLowerCase();
       list = list.filter(
         (s) =>
-          s.target.toLowerCase().includes(needle) ||
-          s.id.toLowerCase().includes(needle),
+          (s.target ?? "").toLowerCase().includes(needle) ||
+          (s.id ?? "").toLowerCase().includes(needle),
       );
     }
     // newest first
     return [...list].sort(
       (a, b) =>
-        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+        new Date(b.started_at ?? 0).getTime() -
+        new Date(a.started_at ?? 0).getTime(),
     );
   }, [data, q, status]);
 

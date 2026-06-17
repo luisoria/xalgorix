@@ -76,10 +76,16 @@ export function mergeFeedEvents(...streams: FeedEvent[][]): FeedEvent[] {
   const out: FeedEvent[] = [];
   for (const events of streams) {
     for (const event of events) {
-      const key = eventDedupeKey(event, event._receivedAt);
+      const receivedAt =
+        event._receivedAt ?? parsedEventTimestampMs(event.timestamp) ?? 0;
+      const key = eventDedupeKey(event, receivedAt);
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push(event);
+      out.push({
+        ...event,
+        _key: event._key || key,
+        _receivedAt: receivedAt,
+      });
     }
   }
   return out.sort((a, b) => {
@@ -87,7 +93,7 @@ export function mergeFeedEvents(...streams: FeedEvent[][]): FeedEvent[] {
     if (byTime !== 0) return byTime;
     const byReceived = (a._receivedAt || 0) - (b._receivedAt || 0);
     if (byReceived !== 0) return byReceived;
-    return a._key.localeCompare(b._key);
+    return (a._key || "").localeCompare(b._key || "");
   });
 }
 
