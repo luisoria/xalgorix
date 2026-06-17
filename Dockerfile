@@ -10,5 +10,7 @@ COPY --from=build /out/xalgorix /usr/local/bin/xalgorix
 EXPOSE 9137
 ENV XALGORIX_BIND=0.0.0.0
 ENV XALGORIX_PORT=9137
+ENV XALGORIX_USERNAME=admin
+ENV XALGORIX_PASSWORD=admin
 ENTRYPOINT ["xalgorix"]
 CMD ["--web", "--port", "9137"]
