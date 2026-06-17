@@ -23,6 +23,84 @@ const send = (res, body, status = 200, headers = {}) => {
 const ok = (res, body = { status: "ok" }) => send(res, body);
 
 const nowIso = () => new Date().toISOString();
+const llmModel = () => process.env.XALGORIX_LLM || "poolside/laguna-m.1:free";
+const apiBase = () =>
+  process.env.XALGORIX_API_BASE || "https://openrouter.ai/api/v1";
+const hasApiKey = () => Boolean(process.env.XALGORIX_API_KEY);
+
+function llmProviderLabel(model, base) {
+  const value = `${model} ${base}`.toLowerCase();
+  if (value.includes("openrouter.ai") || model.includes("/")) return "OpenRouter";
+  if (value.includes("anthropic") || model.includes("claude")) return "Anthropic";
+  if (value.includes("openai") || model.includes("gpt")) return "OpenAI";
+  if (value.includes("gemini") || value.includes("google")) return "Google Gemini";
+  return "Custom";
+}
+
+function environmentVariables() {
+  return [
+    {
+      key: "XALGORIX_LLM",
+      label: "LLM model",
+      category: "llm",
+      description: "Model used by the security agent.",
+      placeholder: "poolside/laguna-m.1:free",
+      inputType: "text",
+      sensitive: false,
+      requiresRestart: true,
+      value: llmModel(),
+      hasValue: true,
+    },
+    {
+      key: "XALGORIX_API_BASE",
+      label: "API base URL",
+      category: "llm",
+      description: "OpenAI-compatible endpoint for the selected provider.",
+      placeholder: "https://openrouter.ai/api/v1",
+      inputType: "url",
+      sensitive: false,
+      requiresRestart: true,
+      value: apiBase(),
+      hasValue: true,
+    },
+    {
+      key: "XALGORIX_API_KEY",
+      label: "API key",
+      category: "llm",
+      description: "Secret key for the configured LLM provider.",
+      placeholder: "sk-or-v1-...",
+      inputType: "secret",
+      sensitive: true,
+      requiresRestart: true,
+      value: "",
+      hasValue: hasApiKey(),
+    },
+    {
+      key: "XALGORIX_PASSWORD",
+      label: "Web password",
+      category: "auth",
+      description: "Password for the web UI.",
+      placeholder: "admin",
+      inputType: "secret",
+      sensitive: true,
+      requiresRestart: true,
+      value: "",
+      hasValue: true,
+    },
+    {
+      key: "XALGORIX_DISCORD_WEBHOOK",
+      label: "Discord webhook",
+      category: "notifications",
+      description: "Optional global Discord webhook.",
+      placeholder: "https://discord.com/api/webhooks/...",
+      inputType: "secret",
+      sensitive: true,
+      requiresRestart: false,
+      value: "",
+      hasValue: false,
+    },
+  ];
+}
 
 let state = {
   instances: [
@@ -197,7 +275,18 @@ const server = http.createServer(async (req, res) => {
 
   // -------- Version / status ------------------------------------------------
   if (method === "GET" && url === "/api/version") {
-    return send(res, { version: "4.2.9", commit: "dev" });
+    const model = llmModel();
+    const base = apiBase();
+    return send(res, {
+      version: "4.2.9",
+      commit: "dev",
+      ai: {
+        configured: hasApiKey() || model === "poolside/laguna-m.1:free",
+        provider: llmProviderLabel(model, base),
+        model,
+        gateway: base.includes("openrouter.ai") ? "openrouter" : "",
+      },
+    });
   }
   if (method === "GET" && url === "/api/status") {
     const run = runningInstance();
@@ -391,6 +480,21 @@ const server = http.createServer(async (req, res) => {
       pod: state.agentMail.pod,
       apiKey: "",
       hasApiKey: state.agentMail.hasApiKey,
+    });
+  }
+  if (method === "GET" && url === "/api/settings/environment") {
+    return send(res, {
+      envFile: ".env",
+      variables: environmentVariables(),
+      restartRequired: false,
+    });
+  }
+  if (method === "POST" && url === "/api/settings/environment") {
+    await readBody(req);
+    return send(res, {
+      envFile: ".env",
+      variables: environmentVariables(),
+      restartRequired: true,
     });
   }
 
