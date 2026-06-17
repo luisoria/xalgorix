@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom"
 import { AuthBootstrap, RequireAuth, RedirectIfAuthed } from "@/app"
+import { RouteErrorBoundary } from "@/components/route-error-boundary"
 import OverviewPage from "@/pages/overview"
 import ScansPage from "@/pages/scans"
 import ScanDetailPage from "@/pages/scan-detail"
@@ -30,6 +31,7 @@ const routes: RouteObject[] = [
         </RedirectIfAuthed>
       </Root>
     ),
+    errorElement: <RouteErrorBoundary />,
   },
   {
     path: "/",
@@ -38,6 +40,7 @@ const routes: RouteObject[] = [
         <RequireAuth />
       </Root>
     ),
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <OverviewPage /> },
       { path: "scans", element: <ScansPage /> },
